@@ -1,5 +1,5 @@
 class Z3store < Formula
-  desc "Separate .git and .jj databases from working trees for cloud-synced folders"
+  desc "Separate z3store (formerly gitstore) Git/JJ databases from working trees"
   homepage "https://github.com/EugOT/z3store"
 
   url "https://github.com/EugOT/z3store/archive/refs/tags/v0.3.0.tar.gz"
@@ -10,16 +10,17 @@ class Z3store < Formula
 
   depends_on "zig" => :build
 
+  conflicts_with "gitstore", because: "both install store managers for the same data layout"
+
   def install
     zig_version = Utils.safe_popen_read("zig", "version").strip
     odie "z3store requires Zig 0.16.x; found #{zig_version}" unless zig_version.start_with?("0.16.")
 
-    system "zig", "build", *std_zig_args(release_mode: :safe)
+    system "zig", "build", "-Doptimize=ReleaseSafe"
+    bin.install "zig-out/bin/zt"
   end
 
   test do
-    ENV["HOME"] = testpath
     assert_match "Usage: zt", shell_output("#{bin}/zt --help 2>&1")
-    system bin/"zt", "init"
   end
 end

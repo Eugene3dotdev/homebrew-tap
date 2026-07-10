@@ -1,22 +1,24 @@
 class Gitstore < Formula
-  desc "Legacy formula for z3store"
-  homepage "https://github.com/EugOT/z3store"
+  desc "Separate .git and .jj databases from working trees for cloud-synced folders"
+  homepage "https://github.com/EugOT/gitstore-cli"
 
-  url "https://github.com/EugOT/z3store/archive/refs/tags/v0.3.0.tar.gz"
-  sha256 "f0aafaf3e9f5ae2aa935e7d90cd3e439590c2977ae39fda271da3173c29a27d4"
+  url "https://github.com/EugOT/gitstore-cli/archive/refs/tags/v0.2.2.tar.gz"
+  version "0.2.2"
+  sha256 "f8a5bc273994ead25c19cd3b01f3395a0f8f873e5572b971f40b915ca5cc9e11"
   license "MIT"
 
-  deprecate! date: "2026-07-06", because: "was renamed to z3store", replacement_formula: "z3store"
+  head "https://github.com/EugOT/gitstore-cli.git", branch: "main"
 
-  depends_on "z3store"
+  deprecate! date: "2026-07-05", because: "renamed to z3store (CLI: zt); brew install eugot/tap/z3store"
+
+  depends_on "zig" => :build
 
   def install
-    bin.install_symlink formula_opt_bin("z3store")/"zt" => "gitstore"
+    system "zig", "build", "-Doptimize=ReleaseSafe", "--prefix", prefix
   end
 
   test do
-    ENV["HOME"] = testpath
-    assert_match "Usage: zt", shell_output("#{bin}/gitstore --help 2>&1")
+    assert_match "Usage: gitstore", shell_output("#{bin}/gitstore --help 2>&1")
     system bin/"gitstore", "init"
   end
 end
