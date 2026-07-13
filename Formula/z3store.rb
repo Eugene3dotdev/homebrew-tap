@@ -2,8 +2,8 @@ class Z3store < Formula
   desc "Separate z3store (formerly gitstore) Git/JJ databases from working trees"
   homepage "https://github.com/EugOT/z3store"
 
-  url "https://github.com/EugOT/z3store/archive/refs/tags/v0.3.0.tar.gz"
-  sha256 "f0aafaf3e9f5ae2aa935e7d90cd3e439590c2977ae39fda271da3173c29a27d4"
+  url "https://github.com/EugOT/z3store/archive/refs/tags/v0.3.1.tar.gz"
+  sha256 "520adde7fe5a3276cc71acbc8cb803a94313ac685e9f4ba5d46db26b8e6380bd"
   license "MIT"
 
   head "https://github.com/EugOT/z3store.git", branch: "main"
