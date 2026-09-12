@@ -1,0 +1,42 @@
+# Readiness adapter (readiness/v1) — consumes the canonical contract from
+# Eugene3dotdev/dotfiles readiness/. A formula change publishes a new
+# artifact to every consumer that runs `brew upgrade`, so every formula is
+# release blast radius. The record for a z3store release lists both
+# Eugene3dotdev/z3store and this repository.
+adapter: readiness-adapter/v1
+contract_version: readiness/v1
+repo: Eugene3dotdev/homebrew-tap
+issue_prefix: TEO
+canonical: Eugene3dotdev/dotfiles:readiness
+path_classes:
+  - glob: ".github/**"
+    class: local
+  - glob: "mise.toml"
+    class: local
+  - glob: ".readiness/**"
+    class: local
+  - glob: "**/*.md"
+    class: local
+  - glob: "Formula/**"
+    class: release
+  - glob: "**"
+    class: release
+control_points:
+  - id: gh:readiness-gate
+    kind: github-workflow
+    path: .github/workflows/readiness.yml
+    enforces: true
+    required_check: "Readiness Gate"
+    evidence: [source-validation]
+  - id: formula:z3store
+    kind: homebrew-formula
+    path: Formula/z3store.rb
+    enforces: false
+    note: release path for z3store; release-verification evidence comes from the z3store verify-release tier on the tagged commit
+  - id: formula:gitstore
+    kind: homebrew-formula
+    path: Formula/gitstore.rb
+    enforces: false
+    note: deprecated shim formula
+exempt_actors: []
+ignore_paths: []

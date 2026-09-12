@@ -1,0 +1,52 @@
+# Readiness gate (readiness/v1) — canonical contract and validator in
+# Eugene3dotdev/dotfiles readiness/; .readiness/ holds the vendored copy.
+# A formula change is a release: the pull request must reference a Linear
+# TEO issue whose readiness record is ready, lists this repository, and
+# declares at least `release` blast radius. Formula syntax is checked with
+# ruby before evidence is recorded. Fails closed without LINEAR_API_KEY.
+name: Readiness
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: readiness-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Readiness Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install Nushell from mise.toml
+        uses: jdx/mise-action@v4
+        with:
+          version: 2026.8.12
+      - name: Verify the vendored validator
+        run: nu --no-config-file .readiness/readiness.nu lock
+      - name: Validate the readiness record
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          ACTOR: ${{ github.event.pull_request.user.login }}
+        run: nu --no-config-file .readiness/readiness.nu check --actor "$ACTOR"
+      - name: Formula syntax
+        run: |
+          set -euo pipefail
+          for f in Formula/*.rb; do ruby -c "$f"; done
+      - name: Record source-validation evidence
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          issue="$(nu --no-config-file .readiness/readiness.nu issue)"
+          nu --no-config-file .readiness/readiness.nu evidence --issue "$issue" --kind source-validation --control-point gh:readiness-gate --ref "$HEAD_SHA" --run "$RUN_URL" --note "ruby -c over Formula/*.rb"
