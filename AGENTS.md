@@ -7,6 +7,8 @@
   validator in `.readiness/`). The record for a z3store version bump lists
   both `Eugene3dotdev/z3store` and `Eugene3dotdev/homebrew-tap`. Run
   `nu .readiness/readiness.nu check --issue TEO-n --base origin/main` before
-  editing; the `Readiness Gate` check enforces the same on every pull request.
+  editing. Enforcement is brokered: the canonical repository validates the
+  record and posts the `Readiness Gate` status branch protection requires, so
+  no Linear credential lives here.
 - Bump `url` and `sha256` together from the tagged z3store release whose
   `verify-release` evidence is recorded on the issue.

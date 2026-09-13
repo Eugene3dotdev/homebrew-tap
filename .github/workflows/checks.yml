@@ -1,0 +1,30 @@
+# Formula syntax check. The readiness record is not validated here: a formula
+# change is a release, and the canonical broker in Eugene3dotdev/dotfiles
+# validates the record and posts the `Readiness Gate` status branch protection
+# requires. No Linear credential lives in this repository; the broker records a
+# green `Formula syntax` as source-validation evidence on the Linear issue.
+name: Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  formula:
+    name: Formula syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check every formula parses
+        run: |
+          set -euo pipefail
+          for f in Formula/*.rb; do ruby -c "$f"; done

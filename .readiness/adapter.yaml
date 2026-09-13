@@ -11,8 +11,6 @@ canonical: Eugene3dotdev/dotfiles:readiness
 path_classes:
   - glob: ".github/**"
     class: local
-  - glob: "mise.toml"
-    class: local
   - glob: ".readiness/**"
     class: local
   - glob: "**/*.md"
@@ -22,11 +20,18 @@ path_classes:
   - glob: "**"
     class: release
 control_points:
-  - id: gh:readiness-gate
-    kind: github-workflow
-    path: .github/workflows/readiness.yml
+  - id: broker:readiness-gate
+    kind: broker-status
     enforces: true
     required_check: "Readiness Gate"
+    note: >-
+      posted by the broker in Eugene3dotdev/dotfiles; a formula bump is a release, so its record
+      lists both this repository and Eugene3dotdev/z3store
+  - id: gh:checks
+    kind: github-workflow
+    path: .github/workflows/checks.yml
+    enforces: false
+    check_name: "Formula syntax"
     evidence: [source-validation]
   - id: formula:z3store
     kind: homebrew-formula

@@ -1,4 +1,0 @@
-# Toolchain for the readiness gate workflow (jdx/mise-action installs from
-# this file).
-[tools]
-"aqua:nushell/nushell" = "0.109.1"
