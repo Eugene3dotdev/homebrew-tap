@@ -13,6 +13,8 @@ class Gitstore < Formula
 
   depends_on "zig" => :build
 
+  conflicts_with "z3store", because: "both install store managers for the same data layout"
+
   def install
     system "zig", "build", "-Doptimize=ReleaseSafe", "--prefix", prefix
   end

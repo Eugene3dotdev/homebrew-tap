@@ -1,0 +1,116 @@
+# Opens a version-bump PR for Formula/z3store.rb (TEO-1342).
+#
+# Triggers:
+#   repository_dispatch z3store-release-published  {tag, version}  sent by
+#     Eugene3dotdev/z3store .github/workflows/release.yml after a release
+#   workflow_dispatch  tag input (blank = ask livecheck)
+#   schedule           weekly livecheck fallback for a missed dispatch
+#
+# Steps run in Nu (installed by jdx/mise-action); brew needs no bash step of
+# its own. The formula fetches a tag archive, so the bump uses
+# `--version`: brew rewrites the URL and recomputes sha256 itself.
+name: bump z3store
+
+on:
+  repository_dispatch:
+    types: [z3store-release-published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (vX.Y.Z); blank asks livecheck"
+        required: false
+        type: string
+  schedule:
+    - cron: "17 6 * * 1"
+
+permissions: {}
+
+concurrency:
+  group: bump-z3store
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: bump-formula-pr
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write # push the bump branch to this tap
+      pull-requests: write # open the bump PR
+    steps:
+      # Clones this tap into the workspace and links it as eugene3dotdev/tap.
+      # `token` persists git credentials so `brew bump-formula-pr --no-fork`
+      # can push its branch; `brew-gh-api-token` lets brew open the PR.
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@c262868c096d909fc278daa87ed9772967331ea3 # 2026.11.02.1
+        with:
+          token: ${{ github.token }}
+          brew-gh-api-token: ${{ github.token }}
+
+      - name: Install Nu
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+        with:
+          cache: false
+          mise_toml: |
+            [tools]
+            nu = "0.108.0"
+
+      - name: Bump formula
+        shell: nu {0}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HOMEBREW_GITHUB_API_TOKEN: ${{ github.token }}
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_ANALYTICS: "1"
+          HOMEBREW_GIT_NAME: github-actions[bot]
+          HOMEBREW_GIT_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          DISPATCH_TAG: ${{ github.event.client_payload.tag }}
+          DISPATCH_VERSION: ${{ github.event.client_payload.version }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          const formula = "eugene3dotdev/tap/z3store"
+
+          def newer [a: string, b: string] {
+            let x = ($a | split row "." | each { into int })
+            let y = ($b | split row "." | each { into int })
+            for i in 0..2 {
+              if ($x | get $i) > ($y | get $i) { return true }
+              if ($x | get $i) < ($y | get $i) { return false }
+            }
+            false
+          }
+
+          let requested = match $env.GITHUB_EVENT_NAME {
+            "repository_dispatch" => ($env.DISPATCH_TAG? | default "")
+            "workflow_dispatch" => ($env.INPUT_TAG? | default "")
+            _ => ""
+          }
+          let tag = if ($requested | is-empty) {
+            let lc = (^brew livecheck --formula --json $formula | from json | first)
+            $"v($lc.version.latest)"
+          } else { $requested }
+
+          # Stable tags only: rc tags must never reach the tap formula.
+          let parsed = ($tag | parse --regex '^v(?<v>\d+\.\d+\.\d+)$')
+          if ($parsed | is-empty) {
+            error make { msg: $"refusing tag '($tag)': expected vX.Y.Z" }
+          }
+          let version = $parsed.0.v
+          let claimed = ($env.DISPATCH_VERSION? | default "")
+          if ($claimed | is-not-empty) and ($claimed != $version) {
+            error make { msg: $"payload version ($claimed) does not match tag ($tag)" }
+          }
+
+          let current = (^brew info --json=v2 $formula | from json | get formulae.0.versions.stable)
+          if not (newer $version $current) {
+            print $"z3store ($current) is current; ($tag) is not newer"
+            exit 0
+          }
+
+          let open = (^gh pr list --repo $env.GITHUB_REPOSITORY --state open --search $"z3store ($version) in:title" --json number | from json)
+          if ($open | is-not-empty) {
+            print $"bump PR for ($version) already open: #($open.0.number)"
+            exit 0
+          }
+
+          ^brew bump-formula-pr --no-browse --no-fork --version $version $formula
